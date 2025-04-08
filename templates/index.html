@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZhenyaGPT</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/monokai-sublime.min.css">
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}" type="image/png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background: #0a0a0a;
+            color: #e6e6e6;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            line-height: 1.7;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #111111;
+            padding: 30px 20px;
+            border-right: 1px solid #1f1f1f;
+            overflow-y: auto;
+            transition: width 0.3s ease;
+        }
+
+        .sidebar:hover {
+            width: 320px;
+        }
+
+        .sidebar a {
+            display: flex;
+            align-items: center;
+            padding: 14px 20px;
+            color: #b8b8b8;
+            text-decoration: none;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+            font-size: 15px;
+            position: relative;
+        }
+
+        .sidebar a:hover {
+            background: #222222;
+            color: #fff;
+            padding-left: 25px;
+        }
+
+        .sidebar a.active {
+            background: linear-gradient(135deg, #2a2a2a, #404040);
+            color: #fff;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .sidebar a i {
+            margin-right: 10px;
+        }
+
+        .delete-chat-btn {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: #b8b8b8;
+            cursor: pointer;
+            padding: 0 14px;
+            font-size: 15px;
+            transition: color 0.3s ease, transform 0.2s ease;
+        }
+
+        .delete-chat-btn:hover {
+            color: #ff7575;
+            transform: scale(1.1);
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0a0a0a;
+        }
+
+        .header {
+            padding: 25px;
+            text-align: center;
+            border-bottom: 1px solid #1f1f1f;
+            background: #111111;
+            position: relative;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #fff;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: #a8a8a8;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        .chat-container {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+            background: #0a0a0a;
+        }
+
+        /* Кастомный скроллбар для .chat-container и .sidebar */
+        .chat-container::-webkit-scrollbar,
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-container::-webkit-scrollbar-track,
+        .sidebar::-webkit-scrollbar-track {
+            background: #171717;
+            border-radius: 4px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb,
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #454545;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb:hover,
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: #656565;
+        }
+
+        /* Для Firefox */
+        .chat-container,
+        .sidebar {
+            scrollbar-width: thin;
+            scrollbar-color: #454545 #171717;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 15px 20px;
+            border-radius: 12px;
+            word-wrap: break-word;
+            font-size: 15px;
+            position: relative;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .message:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .user-message {
+            background: #454545;
+            align-self: flex-end;
+            border: 1px solid #555555;
+        }
+
+        .ai-message {
+            background: #171717;
+            align-self: flex-start;
+            border: 1px solid #2a2a2a;
+        }
+
+        .ai-message pre {
+            background: #222222;
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 12px 0;
+            border: 1px solid #333333;
+        }
+
+        .ai-message code {
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 14px;
+        }
+
+        .message-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .copy-btn {
+            margin-top: 8px;
+            background: #454545;
+            border: none;
+            padding: 6px 12px;
+            color: #e6e6e6;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s ease, transform 0.2s ease;
+            width: fit-content;
+        }
+
+        .copy-btn:hover {
+            background: #656565;
+            transform: scale(1.05);
+        }
+
+        .loading {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            color: #a8a8a8;
+            align-self: center;
+            margin: 25px 0;
+            font-size: 15px;
+            font-style: italic;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #a8a8a8;
+            border-top: 3px solid #e6e6e6;
+            border-radius: 50%;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .input-container {
+            padding: 25px;
+            border-top: 1px solid #1f1f1f;
+            background: #111111;
+            box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.25);
+        }
+
+        .input-form {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+
+        .input-form textarea {
+            flex: 1;
+            background: #171717;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            padding: 15px;
+            color: #e6e6e6;
+            resize: none;
+            min-height: 60px;
+            max-height: 180px;
+            outline: none;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            font-size: 15px;
+        }
+
+        .input-form textarea:focus {
+            border-color: #656565;
+            box-shadow: 0 0 8px rgba(101, 101, 101, 0.5);
+        }
+
+        .input-form button {
+            background: linear-gradient(135deg, #454545, #555555);
+            border: none;
+            padding: 15px 30px;
+            color: #e6e6e6;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+        }
+
+        .input-form button:hover {
+            background: linear-gradient(135deg, #656565, #757575);
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .control-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .reset-button, .stop-button {
+            background: #222222;
+            border: none;
+            padding: 12px 20px;
+            color: #b8b8b8;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .reset-button:hover {
+            background: #ff7575;
+            color: #fff;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .stop-button:hover {
+            background: #656565;
+            color: #fff;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .hljs {
+            background: #222222 !important;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #333333;
+        }
+
+        .typing {
+            overflow: hidden;
+            white-space: nowrap;
+            animation: typing 0.6s steps(40, end) forwards;
+        }
+
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="sidebar">
+        <a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Выйти</a>
+        <a href="{{ url_for('new_chat') }}"><i class="fas fa-plus"></i> Новый чат</a>
+        {% for chat_id, chat_data in chats.items() %}
+            <a href="{{ url_for('switch_chat', chat_id=chat_id) }}" 
+               class="{% if chat_id == active_chat %}active{% endif %}">
+                <i class="fas fa-comment"></i> {{ chat_data.title }}
+                <form method="POST" action="{{ url_for('delete_chat_route', chat_id=chat_id) }}" style="display: inline;">
+                    <button type="submit" class="delete-chat-btn" onclick="return confirm('Удалить этот чат?');">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </form>
+            </a>
+        {% endfor %}
+    </div>
+
+    <div class="main">
+        <div class="header">
+            <h1>ZhenyaGPT</h1>
+            <p>Добро пожаловать, {{ session.username }}! Теперь начнем!</p>
+        </div>
+
+        <div class="chat-container" id="conversation">
+            {% for message in history %}
+                {% if message.role == 'user' %}
+                    <div class="message user-message">{{ message.content }}</div>
+                {% elif message.role == 'assistant' %}
+                    <div class="message-wrapper">
+                        <div class="message ai-message" data-markdown="{{ message.content | e }}"></div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+            <div class="loading" id="loading">
+                <span>Пишу тебе ответ...</span>
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <div class="input-container">
+            <form method="POST" class="input-form" id="chat-form">
+                <textarea name="user_input" 
+                          placeholder="Задай вопрос, если осмелишься" 
+                          rows="1" 
+                          autofocus></textarea>
+                <button type="submit"><i class="fas fa-arrow-right"></i></button>
+            </form>
+            <div class="control-buttons">
+                <form method="POST" action="{{ url_for('reset_chat_route', chat_id=active_chat) }}">
+                    <button type="submit" class="reset-button"><i class="fas fa-trash"></i> Очистить</button>
+                </form>
+                <button id="stop-btn" class="stop-button"><i class="fas fa-stop"></i> Стоп</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        marked.setOptions({
+            highlight: function(code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, { language }).value;
+            },
+            breaks: true,
+            gfm: true
+        });
+    
+        function renderMarkdown(element, text) {
+            element.innerHTML = marked.parse(text);
+            const wrapper = element.parentNode;
+            const preElement = element.querySelector('pre');
+            if (preElement) {
+                const codeElement = preElement.querySelector('code') || preElement;
+                const copyButton = document.createElement('button');
+                copyButton.className = 'copy-btn';
+                copyButton.textContent = 'Копировать';
+                copyButton.addEventListener('click', () => {
+                    const codeText = codeElement.textContent;
+                    navigator.clipboard.writeText(codeText).then(() => {
+                        copyButton.textContent = 'Скопировано';
+                        setTimeout(() => copyButton.textContent = 'Копировать', 2000);
+                    });
+                });
+                wrapper.appendChild(copyButton);
+            }
+        }
+    
+        function scrollToBottom() {
+            const chatContainer = document.getElementById('conversation');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.ai-message').forEach(element => {
+                const markdownText = element.getAttribute('data-markdown');
+                renderMarkdown(element, markdownText);
+            });
+            document.getElementById('loading').style.display = 'none';
+            scrollToBottom();
+    
+            const textarea = document.querySelector('textarea');
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = `${this.scrollHeight}px`;
+            });
+        });
+    
+        const chatForm = document.getElementById('chat-form');
+        const loading = document.getElementById('loading');
+        const conversation = document.getElementById('conversation');
+        const stopBtn = document.getElementById('stop-btn');
+    
+        chatForm.addEventListener('submit', function(e) {
+            const input = document.querySelector('textarea[name="user_input"]').value.trim();
+            if (!input) {
+                e.preventDefault();
+                alert("Пусто? Серьёзно?");
+                return;
+            }
+    
+            const userMessage = document.createElement('div');
+            userMessage.className = 'message user-message';
+            userMessage.textContent = input;
+            conversation.insertBefore(userMessage, loading);
+    
+            loading.style.display = 'flex';
+            scrollToBottom();
+    
+            // Очищаем текстовое поле сразу после отправки
+            setTimeout(() => {
+                document.querySelector('textarea[name="user_input"]').value = '';
+                document.querySelector('textarea[name="user_input"]').style.height = 'auto';
+            }, 0);
+        });
+    
+        stopBtn.addEventListener('click', function() {
+            fetch('/stop_response', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            }).then(response => response.json()).then(data => {
+                if (data.status === 'stopped') {
+                    loading.style.display = 'none';
+                    scrollToBottom();
+                }
+            });
+        });
+    
+        window.addEventListener('load', () => {
+            const lastAiMessage = document.querySelector('.ai-message:last-child');
+            if (lastAiMessage) {
+                const markdownText = lastAiMessage.getAttribute('data-markdown');
+                lastAiMessage.classList.add('typing');
+                renderMarkdown(lastAiMessage, markdownText);
+                lastAiMessage.addEventListener('animationend', () => {
+                    lastAiMessage.classList.remove('typing');
+                    scrollToBottom();
+                });
+            }
+            scrollToBottom();
+        });
+    
+        document.addEventListener('DOMContentLoaded', () => {
+            const textarea = document.querySelector('textarea[name="user_input"]');
+            
+            textarea.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+                    e.preventDefault();
+                    chatForm.requestSubmit();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
